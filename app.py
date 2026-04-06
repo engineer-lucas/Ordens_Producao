@@ -189,6 +189,41 @@ def atualizar_ordens(ordem_id):
     conn.close()
     
     return jsonify(dict(ordem_atualizada)), 200
+
+#ROTA - REMOVER UMA ORDEM (DELETE)
+@app.route('/ordens/<int:ordem_id>', methods=['DELETE'])
+def remover_ordem(ordem_id):
+    """
+    Remover permanentemente uma ordem de producao pelo ID.
+    
+    Parametros de URL:
+        ordem_id (int) : ID da ordem a ser removida.
+        
+    Retorna:
+        200 - confirmacao (mensagem)
+        404 - erro (mensagem) se a ordem nao for encontrada
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    #verificação de existencia antes de DELETAR o registro
+    cursor.execute('SELECT id, produto FROM ordens WHERE id = ?', (ordem_id,))
+    ordem = cursor.fetchone()
+    
+    if ordem is None:
+        conn.close()
+        return jsonify({'erro': f'Ordem de numero {ordem_id} nao encontrada.'}), 404
+    #variavel que guarda o nome do produto apagado para ser usado posteriormente na mensagem
+    #de confirmação.
+    nome_produto_apagado = ordem['produto']
+    
+    #execução de fato da operação
+    cursor.execute('DELETE FROM ordens WHERE id = ?', (ordem_id,))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'mensagem' : f'Ordem de numero {ordem_id} ({nome_produto_apagado}) removida com sucesso!', 'id_removido': ordem_id}), 200
+    
 #PONTO DE PARTIDA ---------------------------------------------------------
 
 if __name__=='__main__':

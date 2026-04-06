@@ -134,7 +134,62 @@ def criar_ordem():
     #201 - Retornar "created" com o registro completo 
     return jsonify(dict(nova_ordem)), 201
     
-#PONTO DE PARTIDA -------------------------------------------------------
+#ROTA - ATUALIZAR O STATUS EM UMA ORDEM DE PRODUÇÃO (PUT) ----------------
+@app.route('/ordens/<int:ordem_id>', methods=['PUT'])
+def atualizar_ordens(ordem_id):
+    """
+    Atualiza o status de uma ordem de produto existente.
+    
+    Parametros de URL:
+        ordem_id (int) : ID da ordem a atualizar.
+        
+    Body esperado (JSON):
+        status (str) : Novo Status. Valores aceitos:
+            'Pendente', 'Em andamento', 'Concluida'.
+            
+    Retorna:
+        200 : JSON da ordem atualizada;
+        400 : erro se status for invalido;
+        404 : erro se ordem não foi encontrada.
+    """
+    
+    dados = request.get_json()
+    
+    if not dados:
+        return jsonify({'erro': 'Body da requisicao ausente ou e invalido.'}), 400 
+
+    #validação do campo do status
+    status_validos = ['Pendente', 'Em andamento', 'Concluida']
+    novo_status = dados.get('status', '').strip()
+    
+    if not novo_status:
+        return jsonify({'erro': 'Campo "Status" e Obrigatorio.'}), 400 
+
+    if novo_status not in status_validos:
+        return ({'erro' : f'Status invalido! Favor usar os permitidos: {status_validos}'}), 400
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT id FROM ordens WHERE id = ?', (ordem_id,))
+    if cursor.fetchone() is None:
+        conn.close()
+        return jsonify({'erro' : f'Ordem {ordem_id} nao encotrada.'}), 404
+    
+    #de fato atualizando a execução
+    cursor.execute('UPDATE ordens SET status = ? WHERE id = ?', (novo_status, ordem_id))
+    
+    conn.commit()
+    conn.close()
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM ordens WHERE id = ?', (ordem_id,))
+    ordem_atualizada = cursor.fetchone()
+    conn.close()
+    
+    return jsonify(dict(ordem_atualizada)), 200
+#PONTO DE PARTIDA ---------------------------------------------------------
 
 if __name__=='__main__':
     init_bd()
